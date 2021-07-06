@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+</head>
+<body>
+<div id="app">
+    <v-app>
+        <v-main>
+            <v-app-bar color="blue" class="text-no-wrap">
+                <v-toolbar-title class="text-no-wrap" style="color: white">Файлы CDN</v-toolbar-title>
+            </v-app-bar>
+            <v-container>
+                <v-card>
+                    <v-list >
+                        <div class="float-right">
+                            <v-btn @click="mkdir">
+                                <v-icon>
+                                    mdi-folder-plus-outline
+                                </v-icon>
+                            </v-btn>
+                            <v-btn  @click="openUpload">
+                                <v-icon>
+                                    mdi-cloud-upload-outline
+                                </v-icon>
+                            </v-btn>
+                        </div>
+                        <v-subheader>Файлы</v-subheader>
+                        <v-list-item-group>
+                            <v-list-item v-if="!{{.IsMainPage}}">
+                                <v-list-item-content onclick="window.history.go(-1)"><label>...</label></v-list-item-content>
+                            </v-list-item>
+                            <v-list-item v-for="file in files" @click="open(file)">
+                                <v-list-item-icon>
+                                    <v-icon v-if="file.is_dir">mdi-folder</v-icon>
+                                    <v-icon v-else>mdi-file</v-icon>
+                                </v-list-item-icon>
+                                <v-list-item-content>
+                                        <label>${file.name}</label>
+                                </v-list-item-content>
+                                <v-list-item-content class="text-center">
+                                    <div v-if="!file.is_dir">
+                                        <label>${getFileSize(file.size)}</label>
+                                    </div>
+                                </v-list-item-content>
+                                <v-list-item-content class="text-right headline">
+                                    <v-list-item-title>
+                                        <v-btn-toggle v-if="!file.is_dir">
+                                            <v-btn small @click="rename(file)">
+                                                <v-icon>mdi-rename-box</v-icon>
+                                            </v-btn>
+                                            <v-btn small @click="deleteClick(file.path)">
+                                                <v-icon>mdi-delete-forever-outline</v-icon>
+                                            </v-btn>
+                                        </v-btn-toggle>
+                                    </v-list-item-title>
+                                </v-list-item-content>
+                            </v-list-item>
+                        </v-list-item-group>
+                    </v-list>
+                </v-card>
+                <div>
+                    <v-file-input v-show="false"
+                            id="fileinput"
+                            hide-input
+                            truncate-length="15"
+                            @change="onFilePicked"
+                    ></v-file-input>
+                </div>
+            </v-container>
+        </v-main>
+    </v-app>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+<script>
+    let token = "{{.Token}}"
+
+    new Vue({
+        delimiters: ['${', '}'],
+        el: '#app',
+        vuetify: new Vuetify(),
+        data: {
+            files: JSON.parse({{.Files}}),
+        },
+        methods: {
+            open(file) {
+                if (!file.is_dir) return;
+                window.open(file.path, '_self')
+            },
+            deleteClick(url) {
+                let formData = new FormData()
+                formData.append("token", token)
+                formData.append("path", url)
+
+                let request = new XMLHttpRequest()
+                request.open("POST", "/api/delete")
+                request.send(formData)
+
+                document.location.reload();
+            },
+            mkdir() {
+                let result = prompt("Введите новое имя", '')
+                if (!result) {
+                    return
+                }
+                let formData = new FormData()
+                formData.append("token", token)
+                formData.append("path", window.location.pathname + "/" + result)
+
+                let request = new XMLHttpRequest()
+                request.open("POST", "/api/mkdir")
+                request.send(formData)
+
+                document.location.reload();
+            },
+            getFileSize(size) {
+                if (size < 1024) {
+                    return `${size}B`
+                }
+                size = size / 1024
+                if (size < 1024) {
+                    return `${size.toFixed(1)}KB`
+                }
+                size = size / 1024
+                return `${size.toFixed(1)}MB`
+            },
+            openUpload() {
+                let el = document.getElementById("fileinput")
+                el.click()
+            },
+            onFilePicked(e) {
+                let formData = new FormData()
+                formData.append("file", e)
+                formData.append("token", token)
+                formData.append("path", window.location.pathname)
+
+                let request = new XMLHttpRequest()
+                request.open("POST", "/api/upload")
+                request.send(formData)
+
+                document.location.reload();
+            },
+            rename(file) {
+                let result = prompt("Введите новое имя", '')
+                if (!result) {
+                    return
+                }
+                let formData = new FormData()
+                formData.append("token", token)
+                formData.append("path", file.path)
+                formData.append("name", result)
+
+                let request = new XMLHttpRequest()
+                request.open("POST", "/api/rename")
+                request.send(formData)
+
+                document.location.reload();
+            }
+        },
+    })
+</script>
+</body>
+</html>
